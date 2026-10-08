@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #eff6ff 0%, #fffdf7 100%);
+  color: #1e293b;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* reveal.js lives inside a bordered card; keep it contained. */
+.reveal-wrap .reveal {
+  font-size: 24px;
+}
+.reveal-wrap .reveal .slides {
+  text-align: left;
+}
