@@ -7,11 +7,12 @@ import type {
   Quiz,
   QuizPayload,
   Slide,
+  TutorPayload,
 } from '../types'
 
 async function post<T>(
   mode: GenerateMode,
-  payload: PptPayload | QuizPayload | GradePayload,
+  payload: PptPayload | QuizPayload | GradePayload | TutorPayload,
   model?: string,
 ): Promise<T> {
   const resp = await fetch('/api/generate', {
@@ -59,4 +60,13 @@ export async function gradeEssay(
   model?: string,
 ): Promise<GradeResult> {
   return post<GradeResult>('grade', payload, model)
+}
+
+/** Socratic tutor chat: AI guides the student without revealing the answer. */
+export async function tutorChat(
+  payload: TutorPayload,
+  model?: string,
+): Promise<string> {
+  const data = await post<{ reply: string }>('tutor', payload, model)
+  return data.reply ?? ''
 }

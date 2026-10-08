@@ -7,13 +7,18 @@ const BASE_URL =
 const DEFAULT_MODEL = process.env.DASHSCOPE_MODEL ?? 'qwen-plus'
 const TIMEOUT_MS = 60_000
 
-type Mode = 'ppt' | 'quiz' | 'grade'
+type Mode = 'ppt' | 'quiz' | 'grade' | 'tutor'
+
+// tutor is conversational (plain text); the others return JSON.
+const JSON_MODES: Mode[] = ['ppt', 'quiz', 'grade']
 
 const SYSTEM_PROMPTS: Record<Mode, string> = {
   ppt: '你是资深教研员。你只能基于用户给定的材料生成教学幻灯片，每一页都要在 sourceChunkIds 中标注所依据的材料片段 id，严禁编造材料中不存在的内容。输出必须是严格的 JSON 对象。',
   quiz: '你是出题专家。请按布鲁姆认知分类法（记忆/理解/应用/分析/评价/创造）出题，所有题目的答案必须可溯源到给定材料原文，并在 sourceChunkIds 标注依据片段 id。严禁编造。输出必须是严格的 JSON 对象。',
   grade:
     '你是经验丰富的批改老师。请给出 1-5 星评级与具体改进建议，不要简单判断对错，而要指出亮点与不足。输出必须是严格的 JSON 对象。',
+  tutor:
+    '你是一位循循善诱的苏格拉底式辅导老师，正在帮助学生自己想出这道题的答案。严格遵守：1) 绝对不要直接说出答案或正确选项；2) 用启发式提问、引导学生回忆相关知识、拆解问题、给出思考方向；3) 当学生说出想法时，顺着他的思路追问或温和纠偏，让他自己得出结论；4) 只有当学生明确表示“放弃/直接告诉我答案”并坚持时，才可以给出答案并讲解。语气亲切、简短、口语化，每次回复聚焦一个引导点，不要长篇大论。',
 }
 
 function buildUserPrompt(mode: Mode, payload: Record<string, unknown>): string {
@@ -78,20 +83,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     model?: string
   }
   const mode = body?.mode
-  if (!mode || !['ppt', 'quiz', 'grade'].includes(mode)) {
+  if (!mode || !['ppt', 'quiz', 'grade', 'tutor'].includes(mode)) {
     res.status(400).json({ ok: false, error: '无效的 mode' })
     return
   }
 
   const model = body.model || DEFAULT_MODEL
-  const requestBody: Record<string, unknown> = {
-    model,
-    messages: [
+  const isJsonMode = JSON_MODES.includes(mode)
+
+  // Build messages: tutor replays the chat history; others are single-shot.
+  let messages: { role: string; content: string }[]
+  if (mode === 'tutor') {
+    const p = body.payload ?? {}
+    const history = Array.isArray(p.messages)
+      ? (p.messages as { role: string; content: string }[])
+      : []
+    const topic = [
+      `当前题目：${String(p.question ?? '')}`,
+      p.options ? `选项：${JSON.stringify(p.options)}` : '',
+      `（供你参考、不要透露的参考答案：${String(p.referenceAnswer ?? '')}）`,
+      p.context ? `相关材料：${String(p.context)}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n')
+    messages = [
+      { role: 'system', content: `${SYSTEM_PROMPTS.tutor}\n\n${topic}` },
+      ...history,
+    ]
+  } else {
+    messages = [
       { role: 'system', content: SYSTEM_PROMPTS[mode] },
       { role: 'user', content: buildUserPrompt(mode, body.payload ?? {}) },
-    ],
-    temperature: 0.3,
-    response_format: { type: 'json_object' },
+    ]
+  }
+
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: mode === 'tutor' ? 0.7 : 0.3,
+  }
+  if (isJsonMode) {
+    requestBody.response_format = { type: 'json_object' }
   }
   // qwen3 series: thinking mode is incompatible with non-streaming JSON output.
   if (/^qwen3/i.test(model)) {
@@ -128,7 +160,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    const data = parseContent(content)
+    // tutor replies in natural language; others are JSON payloads.
+    const data = isJsonMode ? parseContent(content) : { reply: content }
     res.status(200).json({ ok: true, data })
   } catch (e) {
     const aborted = e instanceof Error && e.name === 'AbortError'

@@ -75,7 +75,20 @@ export interface Course {
 
 // ---- API contracts ----
 
-export type GenerateMode = 'ppt' | 'quiz' | 'grade'
+export type GenerateMode = 'ppt' | 'quiz' | 'grade' | 'tutor'
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface TutorPayload {
+  question: string
+  options?: string[]
+  referenceAnswer: string
+  context?: string
+  messages: ChatMessage[]
+}
 
 export interface PptPayload {
   context: string

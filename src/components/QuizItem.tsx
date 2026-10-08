@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import type { AnswerRecord, Chunk, Quiz } from '../types'
-import { gradeEssay } from '../lib/api'
+import type { AnswerRecord, ChatMessage, Chunk, Quiz } from '../types'
+import { gradeEssay, tutorChat } from '../lib/api'
 import { toast } from './Toast'
 
 interface QuizItemProps {
@@ -24,8 +24,53 @@ export function QuizItem({ quiz, index, sources, model, onAnswered }: QuizItemPr
   const [correct, setCorrect] = useState(false)
   const [stars, setStars] = useState<number | null>(null)
   const [feedback, setFeedback] = useState('')
-  const [hint, setHint] = useState(false)
   const [grading, setGrading] = useState(false)
+
+  // Socratic AI tutor chat
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chat, setChat] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatBusy, setChatBusy] = useState(false)
+
+  const askTutor = async (text: string, history: ChatMessage[]) => {
+    setChatBusy(true)
+    try {
+      const reply = await tutorChat(
+        {
+          question: quiz.question,
+          options: quiz.options,
+          referenceAnswer: quiz.answer,
+          context: sources.map((s) => s.text).join('\n').slice(0, 1500),
+          messages: [...history, { role: 'user', content: text }],
+        },
+        model,
+      )
+      setChat([
+        ...history,
+        { role: 'user', content: text },
+        { role: 'assistant', content: reply },
+      ])
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '对话失败')
+    } finally {
+      setChatBusy(false)
+    }
+  }
+
+  const openTutor = () => {
+    setChatOpen(true)
+    if (chat.length === 0) {
+      // Kick off with a leading question instead of giving the answer.
+      void askTutor('我不太会做这道题，请引导我一步步思考，先不要告诉我答案。', [])
+    }
+  }
+
+  const sendChat = () => {
+    const text = chatInput.trim()
+    if (!text || chatBusy) return
+    setChatInput('')
+    void askTutor(text, chat)
+  }
 
   const finish = (isCorrect: boolean, extra?: Partial<AnswerRecord>) => {
     setDone(true)
@@ -153,19 +198,66 @@ export function QuizItem({ quiz, index, sources, model, onAnswered }: QuizItemPr
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-3">
-        {!done && (
+      <div className="mt-3">
+        {!chatOpen ? (
           <button
-            onClick={() => setHint((h) => !h)}
-            className="text-xs text-edu-accentDark hover:underline"
+            onClick={openTutor}
+            className="flex items-center gap-1.5 rounded-full border border-edu-soft px-3 py-1.5 text-xs text-edu-accentDark transition hover:bg-edu-blue"
           >
-            给提示
+            💬 AI 对话提示
           </button>
-        )}
-        {hint && !done && (
-          <span className="text-xs text-slate-500">
-            线索：参考来源片段「{sources[0]?.text.slice(0, 40) ?? ''}…」
-          </span>
+        ) : (
+          <div className="rounded-xl border border-edu-soft bg-edu-blue/30 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-edu-accentDark">
+                AI 辅导（不会直接给答案，引导你自己想出来）
+              </span>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="text-xs text-slate-400 hover:text-slate-600"
+              >
+                收起
+              </button>
+            </div>
+            <div className="max-h-56 space-y-2 overflow-auto">
+              {chat.map((m, i) => (
+                <div
+                  key={i}
+                  className={m.role === 'user' ? 'text-right' : 'text-left'}
+                >
+                  <span
+                    className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-1.5 text-sm ${
+                      m.role === 'user'
+                        ? 'bg-edu-accent text-white'
+                        : 'bg-white text-slate-700 shadow-soft'
+                    }`}
+                  >
+                    {m.content}
+                  </span>
+                </div>
+              ))}
+              {chatBusy && (
+                <div className="text-left text-xs text-slate-400">AI 思考中…</div>
+              )}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                disabled={chatBusy}
+                placeholder="说说你的思路，或问 AI…"
+                className="flex-1 rounded-full border border-edu-soft px-3 py-1.5 text-sm outline-none focus:border-edu-accent"
+              />
+              <button
+                onClick={sendChat}
+                disabled={chatBusy}
+                className="rounded-full bg-edu-accent px-4 py-1.5 text-sm text-white disabled:opacity-50"
+              >
+                发送
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
