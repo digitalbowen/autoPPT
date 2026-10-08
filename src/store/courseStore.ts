@@ -46,6 +46,8 @@ function emptyCourse(): Course {
 
 interface CourseState extends Course {
   step: StepKey
+  model: string
+  setModel: (m: string) => void
   setStep: (s: StepKey) => void
   setName: (name: string) => void
   setParsed: (pages: SourcePage[], chunks: Chunk[]) => void
@@ -83,7 +85,9 @@ function persist(get: () => CourseState) {
 export const useCourseStore = create<CourseState>((set, get) => ({
   ...emptyCourse(),
   step: 'upload',
+  model: 'qwen-plus',
 
+  setModel: (model) => set({ model }),
   setStep: (step) => set({ step }),
   setName: (name) => {
     set({ name })

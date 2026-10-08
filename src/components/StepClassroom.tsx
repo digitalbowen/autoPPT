@@ -11,6 +11,7 @@ export function StepClassroom() {
   const addAnswer = useCourseStore((s) => s.addAnswer)
   const resetAnswers = useCourseStore((s) => s.resetAnswers)
   const setStep = useCourseStore((s) => s.setStep)
+  const model = useCourseStore((s) => s.model)
   const [retryKey, setRetryKey] = useState(0)
 
   const chunkMap = useMemo(() => {
@@ -76,6 +77,7 @@ export function StepClassroom() {
             quiz={q}
             index={i}
             sources={sourcesFor(q.sourceChunkIds ?? [])}
+            model={model}
             onAnswered={addAnswer}
           />
         ))}

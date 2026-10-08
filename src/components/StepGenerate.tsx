@@ -16,7 +16,8 @@ const ALL_TYPES: { key: QuestionType; label: string }[] = [
 
 export function StepGenerate() {
   const [tab, setTab] = useState<'ppt' | 'quiz'>('ppt')
-  const [model, setModel] = useState(MODELS[0])
+  const model = useCourseStore((s) => s.model)
+  const setModel = useCourseStore((s) => s.setModel)
   const [loading, setLoading] = useState(false)
 
   const buildContext = useCourseStore((s) => s.buildContext)
