@@ -76,7 +76,6 @@ export function StepClassroom() {
             key={`${q.id}-${retryKey}`}
             quiz={q}
             index={i}
-            sources={sourcesFor(q.sourceChunkIds ?? [])}
             model={model}
             onAnswered={addAnswer}
           />
