@@ -4,7 +4,7 @@ import type { Slide } from '../types'
 /** Export slides (with speaker notes + source refs) to a .pptx file. */
 export function exportPptx(courseName: string, slides: Slide[]): void {
   const pptx = new PptxGenJS()
-  pptx.author = 'EduGen'
+  pptx.author = 'AUTO-PPT'
   pptx.title = courseName
 
   // Title slide
@@ -20,7 +20,7 @@ export function exportPptx(courseName: string, slides: Slide[]): void {
     color: '2563EB',
     align: 'center',
   })
-  cover.addText('由 EduGen 基于学习材料生成', {
+  cover.addText('由 AUTO-PPT 基于学习材料生成', {
     x: 0.5,
     y: 3.6,
     w: 9,

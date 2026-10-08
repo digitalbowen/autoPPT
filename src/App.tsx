@@ -38,7 +38,7 @@ export default function App() {
               E
             </span>
             <div>
-              <div className="text-base font-semibold text-edu-ink">EduGen</div>
+              <div className="text-base font-semibold text-edu-ink">AUTO-PPT</div>
               <div className="text-xs text-slate-500">资料驱动 · 出PPT · 出互动题</div>
             </div>
           </div>
