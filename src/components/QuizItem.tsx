@@ -164,7 +164,7 @@ export function QuizItem({ quiz, index, model, onAnswered }: QuizItemProps) {
           onClick={openTutor}
           className="flex items-center gap-1.5 rounded-full border border-edu-soft px-3 py-1.5 text-xs text-edu-accentDark transition hover:bg-edu-blue"
         >
-          💬 AI 对话提示（新页面）
+          💬 AI 对话提示
         </button>
       </div>
 
