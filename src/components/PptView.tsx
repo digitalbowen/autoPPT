@@ -60,7 +60,7 @@ export function PptView({ slides, onEdit }: PptViewProps) {
                 {s.title}
               </h2>
               <ul>
-                {s.points.map((p, j) => (
+                {(s.points ?? []).map((p, j) => (
                   <li
                     key={j}
                     contentEditable
@@ -76,7 +76,7 @@ export function PptView({ slides, onEdit }: PptViewProps) {
                   </li>
                 ))}
               </ul>
-              {s.sourceChunkIds?.length > 0 && (
+              {(s.sourceChunkIds?.length ?? 0) > 0 && (
                 <div
                   style={{ fontSize: 12, color: '#94a3b8', marginTop: 16 }}
                 >

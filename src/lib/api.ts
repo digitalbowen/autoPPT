@@ -29,7 +29,13 @@ export async function generatePpt(
   model?: string,
 ): Promise<Slide[]> {
   const data = await post<{ slides: Slide[] }>('ppt', payload, model)
-  return data.slides ?? []
+  // Normalize: the LLM may omit fields; guarantee the shape UI expects.
+  return (data.slides ?? []).map((s) => ({
+    title: s?.title ?? '',
+    points: Array.isArray(s?.points) ? s.points : [],
+    speakerNotes: s?.speakerNotes ?? '',
+    sourceChunkIds: Array.isArray(s?.sourceChunkIds) ? s.sourceChunkIds : [],
+  }))
 }
 
 export async function generateQuiz(
@@ -38,8 +44,13 @@ export async function generateQuiz(
 ): Promise<Quiz[]> {
   const data = await post<{ quizzes: Quiz[] }>('quiz', payload, model)
   return (data.quizzes ?? []).map((q, i) => ({
-    ...q,
-    id: q.id || `q${i + 1}`,
+    id: q?.id || `q${i + 1}`,
+    type: q?.type ?? 'choice',
+    question: q?.question ?? '',
+    options: Array.isArray(q?.options) ? q.options : undefined,
+    answer: q?.answer ?? '',
+    explain: q?.explain ?? '',
+    sourceChunkIds: Array.isArray(q?.sourceChunkIds) ? q.sourceChunkIds : [],
   }))
 }
 
