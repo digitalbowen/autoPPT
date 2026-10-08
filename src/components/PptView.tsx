@@ -14,6 +14,7 @@ interface PptViewProps {
 export function PptView({ slides, onEdit }: PptViewProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const deckRef = useRef<Api | null>(null)
+  const readyRef = useRef(false)
 
   useEffect(() => {
     if (!rootRef.current) return
@@ -25,9 +26,18 @@ export function PptView({ slides, onEdit }: PptViewProps) {
       height: 640,
       margin: 0.06,
     })
-    void deck.initialize()
+    // initialize() is async; only mark ready once reveal's DOM is built.
+    deck
+      .initialize()
+      .then(() => {
+        readyRef.current = true
+      })
+      .catch(() => {
+        /* initialize failed; keep readyRef false so sync() is skipped */
+      })
     deckRef.current = deck
     return () => {
+      readyRef.current = false
       try {
         deck.destroy()
       } catch {
@@ -37,9 +47,14 @@ export function PptView({ slides, onEdit }: PptViewProps) {
     }
   }, [])
 
-  // Re-sync reveal after slide data changes (count/content).
+  // Re-sync reveal after slide data changes — only once init has finished.
   useEffect(() => {
-    deckRef.current?.sync()
+    if (!readyRef.current) return
+    try {
+      deckRef.current?.sync()
+    } catch {
+      /* sync raced with teardown; safe to ignore */
+    }
   }, [slides.length])
 
   return (
